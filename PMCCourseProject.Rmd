@@ -1,0 +1,114 @@
+---
+title: "Practical Machine Learning course project"
+author: "Greg Michalopoulos"
+date: "April 8, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(RCurl)
+library(pander)
+library(caret)
+library(randomForest)
+library(rpart)
+library(gbm)
+library(survival)
+library(splines)
+library(parallel)
+library(plyr)
+library(MASS)
+panderOptions('keep.trailing.zeros', TRUE)
+panderOptions('p.wrap', '')
+```
+
+## Executive Summary
+
+## The data set
+
+The data set is the [Weight Lifting Exercises Dataset](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises) that captures data from various sensors.  The participants were asked to perform exercises in a specific way to capture data for proper and improper technique.  The exact technique is captured as ```classe``` with values A through E.
+
+In order to prepare the data for model training, only columns that contribute to the model (readings from the sensors) are kept.  Also only columns that are not blank in the test data set are kept in the training set to train the model.  If the column is unavailable in the test data set, there is no point building a model based on that data.
+
+```{r dataInfo, echo=FALSE}
+# Data is from http://groupware.les.inf.puc-rio.br/har
+# Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting 
+# Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, 
+# Germany: ACM SIGCHI, 2013.
+```
+```{r data, cache=TRUE}
+cleanData <- function(inputData){
+  outputData <- lapply(inputData[,8:159], as.numeric)
+  outputData$classe <- inputData$classe
+  outputData <- data.frame(outputData)
+}
+
+training <- cleanData(read.csv(textConnection(getURL("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))))
+testing <- cleanData(read.csv(textConnection(getURL("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))))
+
+# Identify and remove columns that are all NA
+isNa <- lapply(testing, is.na)
+isNa <- lapply(isNa, sum)
+keepColumns <- isNa == 0
+
+rTraining <- training[, keepColumns]
+rTesting <- testing[, keepColumns]
+```
+
+## Models
+
+Four model types are trained and tested for their in-sample accuracy.
+
+* Random Forest (rf)
+* Classification A Regression Tree (rpart)
+* Stochastic Gradient Boosting (gbm)
+* Linear Discriminant Analysis (lda)
+
+## Cross-Validation
+
+For each model, the resampling method used was bootstrapped with 25 repetitions.
+
+```{r fit, echo=FALSE, cache=TRUE, message=FALSE}
+load(file = "C:/Users/gmich/Documents/.PML2")
+#rffit <- train(classe ~., data = rTraining, method = "rf")
+rfpred <- predict(rffit, newdata = rTraining)
+#rpartfit <- train(classe ~., data = rTraining, method = "rpart")
+rpartpred <- predict(rpartfit, newdata = rTraining)
+#gbmfit <- train(classe ~., data = rTraining, method = "gbm", verbose = FALSE)
+gbmpred <- predict(gbmfit, newdata = rTraining)
+#ldafit <- train(classe ~., data = rTraining, method = "lda")
+ldapred <- predict(ldafit, newdata = rTraining)
+
+rfacc <- sum(rfpred == rTraining$classe)/length(rfpred)
+rpartacc <- sum(rpartpred == rTraining$classe)/length(rpartpred)
+gbmacc <- sum(gbmpred == rTraining$classe)/length(gbmpred)
+ldaacc <- sum(ldapred == rTraining$classe)/length(ldapred)
+```
+
+## Model Accuracy
+
+Just looking at model accuracy, the following in-sample (training) results:
+
+| Model | Accuracy |
+| ------|----------|
+| Random Forest (rf) | `r round(rfacc*100, 1)`% |
+| Classification A Regression Tree (rpart) | `r round(rpartacc*100, 1)`% |
+| Stochastic Gradient Boosting (gbm) | `r round(gbmacc*100, 1)`% |
+| Linear Discriminant Analysis (lda) | `r round(ldaacc*100, 1)`% |
+
+Seeing that random forest provided the highest accuracy, let's take a look at its Kappa value and other information from the `confusionMatrix` method:
+
+```{r inSampleAccuracy, echo=FALSE}
+confusionMatrix(rfpred, rTraining$classe)
+```
+
+The Kappa value is 1 and other metrics look good too, so this is the model chosen to run on the testing data for the prediction.
+
+## Prediction
+
+The testing data is run through the random forest model to produce the following results:
+
+```{r outOfSampleAccuracy}
+rfoospred <- predict(rffit, newdata = rTesting)
+rfoospred
+```
