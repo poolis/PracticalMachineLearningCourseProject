@@ -17,14 +17,3 @@ rffit <- train(classe ~., data = rTraining, method = "rf")
 ldafit <- train(classe ~., data = rTraining, method = "lda")
 save(file = ".PML2", list = c("rffit", "lmfit", "rpartfit", "gbmfit",  "ldafit"))
 ```
-
-```{r specificModels}
-set.seed(12345)
-rfGrid <- data.frame(.mtry = 2)
-rffit <- train(classe ~., data = rTraining, method = "rf", tuneGrid = rfGrid)
-rpartfit <- train(classe ~., data = rTraining, method = "rpart")
-gbmGrid <- data.frame(.shrinkage = 0.1, .interaction.depth = 3, .n.minobsinnode = 10, .n.trees = 50)
-gbmfit <- train(classe ~., data = rTraining, method = "gbm", verbose = FALSE, tuneGrid = gbmGrid)
-ldafit <- train(classe ~., data = rTraining, method = "lda")
-save(file = ".PML3", list = c("rffit", "lmfit", "rpartfit", "gbmfit",  "ldafit"))
-```

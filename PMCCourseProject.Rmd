@@ -1,7 +1,7 @@
 ---
 title: "Practical Machine Learning course project"
 author: "Greg Michalopoulos"
-date: "April 8, 2016"
+date: "April 14, 2016"
 output: html_document
 ---
 
@@ -18,11 +18,14 @@ library(splines)
 library(parallel)
 library(plyr)
 library(MASS)
+set.seed(112358)
 panderOptions('keep.trailing.zeros', TRUE)
 panderOptions('p.wrap', '')
 ```
 
 ## Executive Summary
+
+Using a [random forest ](https://en.wikipedia.org/wiki/Random_forest) to classify sensor data into classes of exercise, it can be determined, with very high accuracy, whether or not an exercise was done correctly.  Additionally, if the exercise is done incorrectly, it can be determined to be one of four common mistakes made by people trying to exercise.
 
 ## The data set
 
@@ -64,11 +67,13 @@ Four model types are trained and tested for their in-sample accuracy.
 * Stochastic Gradient Boosting (gbm)
 * Linear Discriminant Analysis (lda)
 
-## Cross-Validation
+### Cross-Validation
 
-For each model, the resampling method used was bootstrapped with 25 repetitions.
+For each model, the resampling method used was bootstrapping with 25 repetitions.
 
-```{r fit, echo=FALSE, cache=TRUE, message=FALSE}
+```{r fit, echo=TRUE, cache=TRUE, message=FALSE}
+# Model training took a long time, like 2+ hrs so after one time, I cached the model objects to disk
+# .PML2 file.  Model training is in Models.Rmd.
 load(file = "C:/Users/gmich/Documents/.PML2")
 #rffit <- train(classe ~., data = rTraining, method = "rf")
 rfpred <- predict(rffit, newdata = rTraining)
@@ -85,7 +90,7 @@ gbmacc <- sum(gbmpred == rTraining$classe)/length(gbmpred)
 ldaacc <- sum(ldapred == rTraining$classe)/length(ldapred)
 ```
 
-## Model Accuracy
+### Model Accuracy
 
 Just looking at model accuracy, the following in-sample (training) results:
 
@@ -102,7 +107,13 @@ Seeing that random forest provided the highest accuracy, let's take a look at it
 confusionMatrix(rfpred, rTraining$classe)
 ```
 
-The Kappa value is 1 and other metrics look good too, so this is the model chosen to run on the testing data for the prediction.
+The Kappa value is 1 and other metrics look good too, so this is the model chosen to run on the testing data for the prediction.  Here is a plot of the model results, Accuracy vs. # Randomly Selected of Predictors
+
+```{r plotModel, echo=FALSE}
+plot(rffit, main = "Random forest")
+```
+
+The random forest actually had the highest accuracy with only 2 randomly selected predictors.  This is what was used to predict the results on the test data.
 
 ## Prediction
 
@@ -112,3 +123,5 @@ The testing data is run through the random forest model to produce the following
 rfoospred <- predict(rffit, newdata = rTesting)
 rfoospred
 ```
+
+These results were verified on the course final quiz.
